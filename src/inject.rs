@@ -35,14 +35,14 @@ pub unsafe fn inject(rva: u32) {
 
 pub unsafe fn refresh() {
     println!("Refreshing desktop...");
-    let hWnd = GetWindow(FindWindowA(s!("Progman"), s!("Program Manager")), GW_CHILD);
+    let h_wnd = GetWindow(FindWindowA(s!("Progman"), s!("Program Manager")), GW_CHILD);
 
     // check if desktop icons are visible
     // https://stackoverflow.com/a/6403014/9044183
-    let hWnd2 = GetWindow(hWnd, GW_CHILD);
+    let h_wnd2 = GetWindow(h_wnd, GW_CHILD);
     let mut wi = WINDOWINFO::default();
     wi.cbSize = std::mem::size_of::<WINDOWINFO>() as u32;
-    GetWindowInfo(hWnd2, &mut wi as *mut _).unwrap();
+    GetWindowInfo(h_wnd2, &mut wi as *mut _).unwrap();
     let visible = wi.dwStyle & WS_VISIBLE == WS_VISIBLE;
 
     if visible {
@@ -53,8 +53,8 @@ pub unsafe fn refresh() {
     } else {
         // if icons are hidden, no refreshing or anything will work, so just unhide and rehide the icons
         // https://stackoverflow.com/a/6403014/9044183
-        SendMessageA(hWnd, WM_COMMAND, WPARAM(0x7402), LPARAM::default());
-        SendMessageA(hWnd, WM_COMMAND, WPARAM(0x7402), LPARAM::default());
+        SendMessageA(h_wnd, WM_COMMAND, WPARAM(0x7402), LPARAM::default());
+        SendMessageA(h_wnd, WM_COMMAND, WPARAM(0x7402), LPARAM::default());
     }
     println!("Refreshed!")
 }

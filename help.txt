@@ -4,7 +4,10 @@ USAGE:
     {} [SUBCOMMAND]
 
 SUBCOMMANDS:
-    <no subcommand> Alias for inject subcommand
-    inject          Injects into the running explorer.exe process's memory to remove the watermark. Does not persist if explorer.exe or system is restarted.
+    <no subcommand> On first run: prompts for admin, installs to %LOCALAPPDATA%\Programs\UWD2,
+                    adds to user PATH, and registers a high-priority logon task. On subsequent
+                    runs (or via the scheduled task): just removes the watermark.
+    inject          Alias for the default behaviour above.
+    remove          Elevates, removes the scheduled task, PATH entry, and install directory.
     help            Shows this menu
     about           Shows some information about UWD2

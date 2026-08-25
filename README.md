@@ -1,6 +1,6 @@
 # ![UWD2](assets/banner.png)
 
-# Universal Watermark Disabler 2
+## Universal Watermark Disabler 2
 
 ![demo](assets/demo.png)
 

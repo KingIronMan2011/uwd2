@@ -1,6 +1,5 @@
 use std::ffi::c_void;
 
-use windows::core::imp::CloseHandle;
 use windows::core::s;
 use windows::Win32::Foundation::{LPARAM, WPARAM};
 use windows::Win32::System::Diagnostics::Debug::WriteProcessMemory;
@@ -21,27 +20,32 @@ pub unsafe fn inject(rva: u32) {
     println!("Injecting ret...");
     // write return instruction to address of function, effectively disabling it
     WriteProcessMemory(
-        explorerhandle,
+        explorerhandle.raw(),
         // offset is position of dll inside explorer.exe, rva is position of func inside dll
         (offset + rva as u64) as *const c_void,
         &RET as *const u8 as *const c_void,
         RET.len(),
         None,
     )
-    .unwrap();
+    .expect("failed to write the patch into explorer.exe");
     println!("Injected!");
-    CloseHandle(explorerhandle.0);
 }
 
 pub unsafe fn refresh() {
     println!("Refreshing desktop...");
-    let h_wnd = GetWindow(FindWindowA(s!("Progman"), s!("Program Manager")), GW_CHILD);
+    let h_wnd = GetWindow(
+        FindWindowA(s!("Progman"), s!("Program Manager")).unwrap(),
+        GW_CHILD,
+    )
+    .unwrap();
 
     // check if desktop icons are visible
     // https://stackoverflow.com/a/6403014/9044183
-    let h_wnd2 = GetWindow(h_wnd, GW_CHILD);
-    let mut wi = WINDOWINFO::default();
-    wi.cbSize = std::mem::size_of::<WINDOWINFO>() as u32;
+    let h_wnd2 = GetWindow(h_wnd, GW_CHILD).unwrap();
+    let mut wi = WINDOWINFO {
+        cbSize: std::mem::size_of::<WINDOWINFO>() as u32,
+        ..Default::default()
+    };
     GetWindowInfo(h_wnd2, &mut wi as *mut _).unwrap();
     let visible = wi.dwStyle & WS_VISIBLE == WS_VISIBLE;
 

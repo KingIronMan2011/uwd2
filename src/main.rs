@@ -23,7 +23,11 @@ fn prog() -> String {
 }
 
 fn help() {
-    println!(include_str!("../help.txt"), env!("CARGO_PKG_VERSION"), prog())
+    println!(
+        include_str!("../help.txt"),
+        env!("CARGO_PKG_VERSION"),
+        prog()
+    )
 }
 
 fn rva() -> u32 {

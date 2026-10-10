@@ -10,7 +10,9 @@ use windows::Win32::System::Diagnostics::Debug::{
 use windows::Win32::System::ProcessStatus::{
     EnumProcessModulesEx, GetModuleBaseNameW, LIST_MODULES_ALL,
 };
-use windows::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ};
+use windows::Win32::System::Threading::{
+    OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_VM_OPERATION, PROCESS_VM_READ, PROCESS_VM_WRITE,
+};
 
 use crate::constants::*;
 
@@ -67,11 +69,11 @@ pub unsafe fn get_explorer_handle() -> ExplorerHandle {
 
     ExplorerHandle(
         OpenProcess(
-            PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
+            PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | PROCESS_VM_OPERATION | PROCESS_VM_WRITE,
             false,
             explorerid,
         )
-        .expect("failed to open explorer.exe for module inspection"),
+        .expect("failed to open explorer.exe for module inspection and patching"),
     )
 }
 

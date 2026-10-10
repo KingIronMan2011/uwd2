@@ -7,8 +7,10 @@ use windows::Win32::System::Diagnostics::Debug::{
     SymGetModuleInfo64, SymInitialize, SymLoadModuleEx, SymSetOptions, IMAGEHLP_MODULE64,
     SYMOPT_UNDNAME,
 };
-use windows::Win32::System::LibraryLoader::GetModuleHandleExA;
-use windows::Win32::System::Threading::{OpenProcess, PROCESS_ALL_ACCESS};
+use windows::Win32::System::ProcessStatus::{
+    EnumProcessModulesEx, GetModuleBaseNameW, LIST_MODULES_ALL,
+};
+use windows::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ};
 
 use crate::constants::*;
 
@@ -64,9 +66,46 @@ pub unsafe fn get_explorer_handle() -> ExplorerHandle {
             .as_u32();
 
     ExplorerHandle(
-        OpenProcess(PROCESS_ALL_ACCESS, false, explorerid)
-            .expect("failed to open explorer.exe with full access"),
+        OpenProcess(
+            PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
+            false,
+            explorerid,
+        )
+        .expect("failed to open explorer.exe for module inspection"),
     )
+}
+
+unsafe fn get_shell32_module(explorer: HANDLE) -> HMODULE {
+    let mut modules = vec![HMODULE::default(); 256];
+    let mut bytes_needed = 0;
+
+    loop {
+        EnumProcessModulesEx(
+            explorer,
+            modules.as_mut_ptr(),
+            (modules.len() * size_of::<HMODULE>()) as u32,
+            &mut bytes_needed,
+            LIST_MODULES_ALL,
+        )
+        .expect("failed to enumerate explorer.exe modules");
+
+        let module_count = bytes_needed as usize / size_of::<HMODULE>();
+        if module_count < modules.len() {
+            let mut name = [0u16; 260];
+            for &module in &modules[..module_count] {
+                let length = GetModuleBaseNameW(explorer, Some(module), &mut name);
+                if length > 0
+                    && String::from_utf16_lossy(&name[..length as usize])
+                        .eq_ignore_ascii_case("shell32.dll")
+                {
+                    return module;
+                }
+            }
+            panic!("shell32.dll is not loaded in explorer.exe");
+        }
+
+        modules.resize(modules.len() * 2, HMODULE::default());
+    }
 }
 
 pub unsafe fn get_shell32_modinfo() -> IMAGEHLP_MODULE64 {
@@ -74,16 +113,14 @@ pub unsafe fn get_shell32_modinfo() -> IMAGEHLP_MODULE64 {
 
     let explorerhandle = get_explorer_handle();
 
-    // let currentprocess = GetCurrentProcess();
-    SymInitialize(explorerhandle.raw(), PCSTR::null(), true)
+    // Load the target's modules explicitly so the module base is from explorer.exe.
+    SymInitialize(explorerhandle.raw(), PCSTR::null(), false)
         .expect("failed to initialize the Windows symbol handler");
     SymSetOptions(SYMOPT_UNDNAME);
     let nullterminatedpath = format!("{}\0", SHELL32_PATH);
     // dbg!(&nullterminatedpath);
     let name = PCSTR::from_raw(nullterminatedpath.as_ptr());
-    let mut module = HMODULE::default();
-    GetModuleHandleExA(0, name, &mut module as *mut HMODULE).expect("failed to locate shell32.dll");
-    // let module = LoadLibraryExA(name, HANDLE::default(), LOAD_LIBRARY_FLAGS::default()).unwrap();
+    let module = get_shell32_module(explorerhandle.raw());
     let r = SymLoadModuleEx(
         explorerhandle.raw(), // target process
         None,                 // handle to image - not used
@@ -94,12 +131,9 @@ pub unsafe fn get_shell32_modinfo() -> IMAGEHLP_MODULE64 {
         None,
         None,
     );
-    assert_ne!(
-        r,
-        0,
-        "failed to load shell32.dll symbols: {:?}",
-        GetLastError()
-    );
+    if r == 0 && GetLastError().0 != 0 {
+        panic!("failed to load shell32.dll symbols: {:?}", GetLastError());
+    }
     let mut modinfo = IMAGEHLP_MODULE64 {
         SizeOfStruct: size_of::<IMAGEHLP_MODULE64>() as u32,
         ..Default::default()

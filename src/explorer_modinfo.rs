@@ -52,6 +52,7 @@ pub unsafe fn get_explorer_handle() -> ExplorerHandle {
             sysinfo::RefreshKind::nothing()
                 .with_processes(sysinfo::ProcessRefreshKind::everything()),
         )
+            .expect("failed to initialize process inspection")
             // get explorer
             .processes()
             .values()

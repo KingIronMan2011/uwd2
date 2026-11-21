@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 directories = "6.0.0"
 pdb = "0.8.0"
-sysinfo = "0.39.6"
+sysinfo = "0.40.4"
 ureq = "3.4.0"
 
 

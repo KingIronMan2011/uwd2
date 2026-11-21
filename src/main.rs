@@ -59,9 +59,15 @@ fn maybe_install() {
     if !startup::is_running_from_install_dir() {
         println!("Installing...");
         startup::install();
-        process::Command::new(startup::installed_exe())
-            .spawn()
-            .expect("failed to launch installed exe");
+        let installed_exe = startup::installed_exe();
+        if let Err(error) = process::Command::new(&installed_exe).spawn() {
+            eprintln!(
+                "Failed to launch installed UWD2 at {}: {error}",
+                installed_exe.display()
+            );
+            eprintln!("If the file is missing, check Windows Security > Protection history for a quarantine event.");
+            process::exit(1);
+        }
         process::exit(0);
     }
 }
